@@ -1,7 +1,5 @@
 # How to add a custom function to libnfc
 
-To add function to libnfc you have to do like so:
-
 I'm using this equipments:
 - Arduino UNO.
 - Adafruit PN532 
@@ -10,14 +8,14 @@ I'm using this equipments:
 - Arduino & libnfc configured to use UART.
 
 
-1 - First you have to know if you will use Arduino like a bridge to adafruit PN532 and compile libnfc to use UART like so:
+1 - First you have to know if you will use Arduino like a bridge to adafruit PN532 or not. I Compiled libnfc to use UART like so:
 > autoreconf -vis
 > ./configure --with-drivers=pn532_uart --sysconfdir=/etc --prefix=/usr
 > make clean all
 
-you can follow the tutorial from nfc-tools.org to learn how to compile your libnfc copy.
+You can follow the tutorial from nfc-tools.org to learn how to compile your libnfc.
 
-2 - When the libnfc is installed and the examples work, open pn53x.h from libnfcfolder/libnfc/chips/
+2 - When the libnfc is installed and the examples work, open pn53x.h in libnfcfolder/libnfc/chips/
 3 - Add your prototype function, in my case, I try to add a custom function that will read SRx rfid TAG. At first, I will add a copy of function that's responsible to initiate the tag and read the UID:
 
 ```C
@@ -31,7 +29,7 @@ int    pn53x_initiator_SRx(struct nfc_device *pnd,
 
 ```
 
-4 - Now go to the pn53x.c in the same folder as the pn53x.h and add the definition of the function:
+4 - Now go to the pn53x.c in the same folder as the pn53x.h and add function definition:
 
 ```C
 
@@ -157,7 +155,7 @@ int pn53x_initiator_SRx(struct nfc_device *pnd,
 
 ```
 
-As you noticed there is two functions here:
+As you noticed, there are two functions here:
 - pn53x_initiator_SRx_ext
 - pn53x_initiator_SRx
 
@@ -174,7 +172,7 @@ NFC_EXPORT int nfc_initiator_SRx(nfc_device *pnd, const nfc_modulation nm, nfc_t
 
 ```
 
-The function "nfc_initiator_SRx" is what the programmer will use and call in his code, when used it calls by the same manner "nfc_initiator_SRx_targets"  but with a little bit instructions before we call the desired function. The first function is responsible to call internal function from "pn53x.c" especially "pn53x_initiator_SRx" but through a struct that libnfc uses for the communication between the low level function (pn53x.c) and high level functions (nfc.c)
+The function "nfc_initiator_SRx" is what the programmer will use and call in his code, when used, it calls  "nfc_initiator_SRx_targets"  but with a little bit instructions before we call the desired function. The "nfc_initiator_SRx_targets" is responsible to call what can control RFID reader from "pn53x.c" especially "pn53x_initiator_SRx" but through a struct that libnfc uses for the communication between the low level function (pn53x.c) and high level functions (nfc.c)
 
 6- Open the nfc.c and add these functions:
 
@@ -258,17 +256,27 @@ int nfc_initiator_SRx(nfc_device *pnd,
 
 ```
 
-These functions are responsible to prepare the ground and the function that should be called. The "nfc_initiator_SRx_targets" is the function that makes the link between the low level functions through "HAL" macro in "nfc_internal.h":
+These functions prepare the ground and what should be called. The "nfc_initiator_SRx_targets"  makes the link between the low level functions through "HAL" macro in "nfc_internal.h". I will explain in details all of these because it's worth it:
+
+This is the macro:
 
 ```C
-
+// the macro that points to desired function
 #define HAL( FUNCTION, ... ) pnd->last_error = 0; \
   if (pnd->driver->FUNCTION) { \
     return pnd->driver->FUNCTION( __VA_ARGS__ ); \
 
 ```
 
-7 - once you added all of these, we will link all these together. Open the file pn53x_uart.c if you use arduino and adafruit PN532 and add in the nfc_driver struct:
+7 - once you added all of these, we will link all these together. Open the file "nfc-internal.h" in libnfc folder and add this line as member of the struct "nfc_driver"  :
+
+```C
+
+int (*initiator_SRx) (struct nfc_device *pnd,  const nfc_modulation nm,  const uint8_t *pbtInitData, const size_t szInitData, nfc_target *pnt);
+
+```
+
+after that, open the file pn53x_uart.c in libnfc/drivers path if you use arduino and adafruit PN532 and add in the nfc_driver struct:
   
   ```C
   
@@ -278,7 +286,56 @@ These functions are responsible to prepare the ground and the function that shou
   
   ```
 
-The ".initiator_SRx" name must be the same used in nfc.c as well as the "pn53x_initiator_SRx". If your  final program doesnt work. Probably is due to the lack of information in nfc_driver struct. 
+The ".initiator_SRx" name must be the same that was used in nfc.c as well as the "pn53x_initiator_SRx". If your  final program doesnt work. Probably is due to the lack of information in nfc_driver struct. Why is that ?
+
+Let me now explain to you how this library works:
+Till now, you are aware that there are two files that contains all of the functions responsible to communicate with our device: nfc.c and pn53x.c. These files are linked together through a struct called nfc_driver. This struct has a multiple functions pointers as members, these members will point to the name of the low level function that will be excuted. For instance:
+
+This is an initialization of the struct
+
+```C
+
+const struct nfc_driver pn532_uart_driver = {
+
+  .initiator_init                   = pn53x_initiator_init,
+  .initiator_init_secure_element    = pn532_initiator_init_secure_element,
+  .initiator_select_passive_target  = pn53x_initiator_select_passive_target,
+  .initiator_poll_target            = pn53x_initiator_poll_target,
+  .initiator_select_dep_target      = pn53x_initiator_select_dep_target,
+  .initiator_deselect_target        = pn53x_initiator_deselect_target,
+  .initiator_transceive_bytes       = pn53x_initiator_transceive_bytes,
+  .initiator_transceive_bits        = pn53x_initiator_transceive_bits,
+  .initiator_transceive_bytes_timed = pn53x_initiator_transceive_bytes_timed,
+  .initiator_transceive_bits_timed  = pn53x_initiator_transceive_bits_timed,
+  .initiator_target_is_present      = pn53x_initiator_target_is_present,
+  
+  /****** My custom code RED1 ********/
+  .initiator_SRx = pn53x_initiator_SRx,
+  /***********************************/
+  
+};
+
+```
+This is the struct itself:
+
+```C
+struct nfc_driver {
+
+
+
+  int (*initiator_transceive_bits_timed)(struct nfc_device *pnd, const uint8_t *pbtTx, const size_t szTxBits, const uint8_t *pbtTxPar, uint8_t *pbtRx, uint8_t *pbtRxPar, uint32_t *cycles);
+  int (*initiator_target_is_present)(struct nfc_device *pnd, const nfc_target *pnt);
+  
+  /** Custom Code RED1 **/
+  int (*initiator_SRx) (struct nfc_device *pnd,  const nfc_modulation nm,  const uint8_t *pbtInitData, const size_t szInitData, nfc_target *pnt);
+  int (*read_block_SRx)(struct nfc_device *pnd, const nfc_modulation nm, nfc_target *pnt, uint32_t address);)
+  /******* ** ** * ** ** * * */
+
+};
+
+```
+As you saw, "initiator_SRx" is the member that I added in nfc_driver struct and in PN532_uart.c, The name that I gave is the name of my custom function in pn53x.c. wooof!!! It's little bit tricky but if you pay attention to these files you will understand.
+
 
 8 - That's all what we can do for now to add a new function. The next thing to do is to excute the make command, you "cd" to the libnfc folder and do "make", "make install" and "make clean" to recompile everything and to have a new fresh library.
 
