@@ -36,7 +36,7 @@ int    pn53x_initiator_SRx(struct nfc_device *pnd,
 ```C
 
 /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** *
- * 	My custom function to read blocks on SRx card     *
+ * 	My custom function                                *
  ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** */
 static int pn53x_initiator_SRx_ext(struct nfc_device *pnd,
                                           const nfc_modulation nm,
