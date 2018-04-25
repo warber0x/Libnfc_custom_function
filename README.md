@@ -1,4 +1,6 @@
-# How to add a custom function to libnfc
+# How to add a custom function to libnfc: Method 1
+
+Whenever you want to create a custom function in libnfc to add a new feature or read a tag/RFID Card that is not fully integrated (like SRx for my case), this article is for you:
 
 I'm using this equipments:
 - Arduino UNO.
