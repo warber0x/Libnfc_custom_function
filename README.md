@@ -5,6 +5,6 @@ I prefer the second one since it keeps things organized and clear.
 
 Here are the links the the files:
 
-Method 1: https://github.com/warber0x/Libnfc_custom_function/edit/master/Custom_Function_method_1.md
+[Method 1](https://github.com/warber0x/Libnfc_custom_function/edit/master/Custom_Function_method_1.md)
 
-Method 2: https://github.com/warber0x/Libnfc_custom_function/blob/master/Custom_function_method_2.md
+[Method 2](https://github.com/warber0x/Libnfc_custom_function/blob/master/Custom_function_method_2.md)
