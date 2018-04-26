@@ -108,7 +108,7 @@ int srx_initiate(struct nfc_device *pnd, const nfc_modulation nm, nfc_target *pn
 
 ```
 
-This code will send the initiate command and get the CHIP ID for the tag/RFID
+This code will send the initiate command and get the CHIP ID from the tag/RFID. I tried to make it small as much as possible. This is where all our communication with the reader happen, I read and took command from the SRx official doc. Here is the link: http://www.st.com/resource/en/datasheet/st25tb04k.pdf
 
 5- Now we need to link these files together, we will use the same method used in "Method 1". We will open first "pn53x_uart.c":
 
@@ -118,7 +118,7 @@ Add this header:
 #include "chips/srx.h"
 ```
 
-And this code into the nfc_driver struct:
+In the same file, add this code into the nfc_driver struct:
 
 ```C
 .srx_rfid_initiate = srx_initiate,
@@ -143,8 +143,11 @@ int nfc_srx_rfid_initiate(struct nfc_device *pnd, const nfc_modulation nm, nfc_t
 }
 ```
 
+If you didn't understand what I did just now go to the first method. I explained how libnfc works and why we have to do all of these.
+
 9- Save everything and go to the terminal and type make && make install && make clean.
 10- Open/create a main.c file and put this code:
+
 ```C
 /**
  @Author: SAMIR Radouane
@@ -257,6 +260,12 @@ May be You have to change the folder path in -I parameters so be careful with th
 
 12 - execute the program:
 > ./nfc_SRx
+
+The program will show a CHIP ID Byte, it will change each time you run the program.
+
+Let me know if you struggle to complete this tutorial.
+
+Thanks.
 
 
 
