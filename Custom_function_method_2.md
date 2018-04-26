@@ -41,9 +41,9 @@ int srx_initiate(struct nfc_device *pnd);
 #define LOG_CATEGORY "libnfc.chip.pn53x"
 #define LOG_GROUP NFC_LOG_GROUP_CHIP
 
-int srx_initiate(struct nfc_device *pnd)
+int srx_initiate(struct nfc_device *pnd, const nfc_modulation nm, nfc_target *pnt)
 {
-/***** Commands *****/
+	/***** Commands *****/
 	
 	uint8_t initiate[] = "\x06\x00";
 	uint8_t selectChip[] = "\xe0\x00";
@@ -87,12 +87,14 @@ int srx_initiate(struct nfc_device *pnd)
 				{
 					if ((res = pn53x_initiator_transceive_bytes(pnd, initiate, 2, ChipBuffer, sizeof(ChipBuffer), 0)) < 0) 
 					{
-						  if ((res == NFC_ERFTRANS) && (CHIP_DATA(pnd)->last_status_byte == 0x01))
+						  if ((res == NFC_ERFTRANS) && (CHIP_DATA(pnd)->last_status_byte == 0x01)) { // Chip timeout
 							continue;
+							printf("Continue\n");
+						  }
 						  else
 						  return res;
 					}
-					printf("The chip ID is: %x\n", ChipBuffer[0]);
+					printf("The chip id: %x\n", ChipBuffer[0]);
 				}
 				found = true;
 				break;
@@ -108,7 +110,7 @@ int srx_initiate(struct nfc_device *pnd)
 
 This code will send the initiate command and get the CHIP ID for the tag/RFID
 
-5- Now we need to link these files to the core, we will use the same method used in "Method 1". We will open first "pn53x_uart.c":
+5- Now we need to link these files together, we will use the same method used in "Method 1". We will open first "pn53x_uart.c":
 
 Add this header: 
 
@@ -123,9 +125,139 @@ And this code into the nfc_driver struct:
 ```
 
 6- Open the nfc-internal.h in libnfc folder and put this prototype:
+
 ```C
-int srx_rfid_initiate(...)
+int (*srx_rfid_initiate)(struct nfc_device *pnd, const nfc_modulation nm, nfc_target *pnt);
 ```
+7- Open now "nfc.h" in libnfc/include/nfc/ and this:
+
+```C
+NFC_EXPORT int nfc_srx_rfid_initiate(struct nfc_device *pnd, const nfc_modulation nm, nfc_target *pnt);
+```
+8- Open "nfc.c":
+
+```C
+int nfc_srx_rfid_initiate(struct nfc_device *pnd, const nfc_modulation nm, nfc_target *pnt)
+{
+	HAL(srx_rfid_initiate, pnd, nm, pnt);
+}
+```
+
+9- Save everything and go to the terminal and type make && make install && make clean.
+10- Open/create a main.c file and put this code:
+```C
+/**
+ @Author: SAMIR Radouane
+ @Date  : 31/03/2018
+ 
+ *
+ * This code is to read data blocks from STx card *
+ **************************************************/
+
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <nfc/nfc.h>
+
+#define RED   \033[0;31m
+#define GREEN \033[1;32m
+#define RESET \033[0m
+
+#define MAX_TARGET_COUNT 16
+
+void print_nfc_target(const nfc_target *pnt, bool verbose)
+{
+  char *s;
+  str_nfc_target(&s, pnt, verbose);
+  printf("%s", s);
+  nfc_free(s);
+}
+
+
+void printhex (uint8_t *data, size_t bytes)
+{
+	size_t count = 0;
+	for (count = 0; count < bytes; count++)
+	printf("%02x ", data[count]);
+
+	printf ("\n");
+}
+
+int main(void)
+{
+	nfc_device  *pnd;
+	nfc_target   nt;
+
+	nfc_context *context;
+
+	/** initiate libnfc and set nfc_context **/
+	nfc_init(&context);
+	if (context == NULL) {
+		printf("\033[0;31m[-]\033[0m Error loading libnfc, must quit ... \n");
+		exit(EXIT_FAILURE);
+	}
+
+	/** Get libnfc Version **/
+	const char *libnfc_version = nfc_version();
+	printf("\033[1;32m[*]\033[0m Libnfc version: %s\n", libnfc_version);
+
+	/** Open NFC Device **/
+	pnd = nfc_open(context, NULL);
+	if (pnd == NULL) {
+		printf("\033[0;31m[-]\033[0m Couldn't open the NFC device, must quit ...\n");
+		exit(EXIT_FAILURE);
+	}
+
+	//Initiate the device
+	if (nfc_initiator_init(pnd) < 0) {
+		printf("\033[0;31m[-]\033[0m Error to initiate the NFC device, must quit...\n");
+		exit(EXIT_FAILURE);
+	}
+
+	//Everything is all right, so now is opened ...
+	printf("\033[1;32m[*]\033[0m The device is opened: %s\n", nfc_device_get_name(pnd));
+
+	/**=======================================================================**/
+	/* This is a known bug from libnfc. To read 14443BSR you should initiate
+	 * ISO14443B to prepare register for PN532 and after you can call
+	 * SRx function.
+	 */
+
+	nfc_target anttemp[1];
+	nfc_modulation nmtemp;
+    	nmtemp.nmt = NMT_ISO14443B;
+    	nmtemp.nbr = NBR_106;
+	nfc_initiator_list_passive_targets(pnd, nmtemp, anttemp, MAX_TARGET_COUNT);
+        
+	/**=========================================================================**/
+
+	/** Choose the type you wanna read **/
+	const nfc_modulation SRx = {
+		.nmt = NMT_ISO14443B2SR,
+		.nbr = NBR_106,
+	};
+
+	nfc_target ant[1];
+	nfc_srx_rfid_initiate(pnd, SRx, anttemp);
+
+	nfc_close(pnd);
+	nfc_exit(context);
+	exit(EXIT_SUCCESS);
+	return 0;
+}
+
+```
+
+11 - Compile everything using this command:
+
+> gcc -o nfc_SRx main.c  -I../libnfc  -I../libnfc/include -lnfc
+
+May be You have to change the folder path in -I parameters so be careful with this.
+
+12 - execute the program:
+> ./nfc_SRx
+
 
 
 
