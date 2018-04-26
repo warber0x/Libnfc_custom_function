@@ -1,4 +1,4 @@
-# Libnfc_custom_function
+# Libnfc custom functions - Tutorial
 
 Welcome !!! This is a simple tutorial to add a custom function to libnfc. There are two ways of doing it: Add functions directly to the files or create two seprate files that will do just what you need.
 I prefer the second one since it keeps things organized and clear.
