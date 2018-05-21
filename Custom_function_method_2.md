@@ -47,15 +47,12 @@ int srx_initiate(struct nfc_device *pnd, const nfc_modulation nm, nfc_target *pn
 	
 	uint8_t initiate[] = "\x06\x00";
 	uint8_t selectChip[] = "\xe0\x00";
-	uint8_t getUID = "\x0b";
-	uint8_t readBlock[] = "\x08";
-	uint8_t writeBlock[] = "\x09";
 	
 	/***** Responses *****/
 	
-	uint8_t UIDBuffer[2] = {0};
-	uint8_t ChipBuffer[1]    =   {0};
-	uint8_t readBuffer    =   0x00000000;
+	uint8_t UIDBuffer[2]  = {0};
+	uint8_t ChipBuffer[1] = {0};
+	uint8_t readBuffer    =  0x00000000;
 	
 	int res = 0;
 	bool found = false;
@@ -108,7 +105,7 @@ int srx_initiate(struct nfc_device *pnd, const nfc_modulation nm, nfc_target *pn
 
 ```
 
-This code will send the initiate command and get the CHIP ID from the tag/RFID. I tried to make it small as much as possible. This is where all our communication with the reader happen, I read and took command from the SRx official doc. Here is the link: http://www.st.com/resource/en/datasheet/st25tb04k.pdf
+This code will send the initiate command and get the CHIP ID from the tag/RFID. I tried to make it small as much as possible. This is where all our communications with the reader happen. I read and took commands from the SRx official doc. Here is the link: http://www.st.com/resource/en/datasheet/st25tb04k.pdf
 
 5- Now we need to link these files together, we will use the same method used in "Method 1". We will open first "pn53x_uart.c":
 
@@ -143,7 +140,7 @@ int nfc_srx_rfid_initiate(struct nfc_device *pnd, const nfc_modulation nm, nfc_t
 }
 ```
 
-If you didn't understand what I did just now go to the first method. I explained how libnfc works and why we have to do all of these.
+If you didn't understand what I did just now go to the first method. I explained how libnfc works and why we have to do all of these steps.
 
 9- Save everything and go to the terminal and type make && make install && make clean.
 10- Open/create a main.c file and put this code:
